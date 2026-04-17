@@ -49,23 +49,35 @@ class LoginViewController: UIViewController {
         print("view did appear")
     }
     
-    override func viewWillLayoutSubviews() {
-        super.viewWillLayoutSubviews()
-        
+    override func viewWillTransition(
+        to size: CGSize,
+        with coordinator: UIViewControllerTransitionCoordinator
+    ) {
+        super.viewWillTransition(to: size, with: coordinator)
+        //modify constraints on landscape mode in iphone
         let isLandscapePhone =
             traitCollection.userInterfaceIdiom == .phone &&
-            traitCollection.verticalSizeClass == .compact
-        
-        if isLandscapePhone && !isKeyboardVisible {
-            stackViewTopConstraint.constant = -50
-            welcomeLabelTopConstraint.constant = 10
-        } else if !isLandscapePhone {
-            welcomeLabelTopConstraint.constant = 100
-        }
+            size.width > size.height
+
+        coordinator.animate(alongsideTransition: { _ in
+            
+            if isLandscapePhone && !self.isKeyboardVisible {
+                self.stackViewTopConstraint.constant = -50
+                self.welcomeLabelTopConstraint.constant = 10
+            } else if isLandscapePhone && self.isKeyboardVisible{
+                self.welcomeLabelTopConstraint.constant = 10
+            }
+            else{
+                self.welcomeLabelTopConstraint.constant = 100
+            }
+            
+            self.view.layoutIfNeeded()
+        })
     }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+        print("FirstVC deallocated")
     }
 
     private func setupUI() {
@@ -83,6 +95,7 @@ class LoginViewController: UIViewController {
         email.borderStyle = .roundedRect
         email.autocapitalizationType = .none
         email.tag = 1
+        //delegate used to handle return key handling and text validation
         email.delegate = self
         email.keyboardType = .emailAddress
         
@@ -109,6 +122,7 @@ class LoginViewController: UIViewController {
         loginButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 20)
         loginButton.layer.cornerRadius = 20
         loginButton.isEnabled = false
+        //modify look of login button to grey tone
         loginButton.alpha = 0.5
     }
     
@@ -159,6 +173,7 @@ class LoginViewController: UIViewController {
     }
     
     private func setupKeyboardObservers() {
+        //add self as listener to keyboard appearance and dismissal
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(keyboardWillShow),
@@ -182,7 +197,7 @@ class LoginViewController: UIViewController {
     
     @objc func keyboardWillShow(notification: Notification) {
         isKeyboardVisible = true
-        
+        //extract the keyboard final frame height
         guard let userInfo = notification.userInfo,
               let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
 
@@ -192,6 +207,7 @@ class LoginViewController: UIViewController {
         UIView.animate(withDuration: 0.3) {
             self.view.layoutIfNeeded()
         }
+        //here UIKit holds closure, closure holds self , but self is not holding UIKit just a functions is called but never stored. so no reference cycle.
     }
     
     @objc func keyboardWillHide(notification: Notification) {
@@ -217,6 +233,7 @@ class LoginViewController: UIViewController {
            storedPassword == enteredPasswordText {
             let homeVC = HomeViewController()
             self.navigationController?.pushViewController(homeVC, animated: true)
+            
         } else {
             showAlert(title: "Error", message: "Login Unsuccessful ", isSuccessful: false)
         }
@@ -224,18 +241,13 @@ class LoginViewController: UIViewController {
     
     @objc func dismissKeyboard() {
         view.endEditing(true)
-        
-        if ((email.text?.isEmpty) == false) && ((password.text?.isEmpty) == false) && (email.text?.trimmingCharacters(in: .whitespacesAndNewlines))?.isEmpty == false && (password.text?.trimmingCharacters(in: .whitespacesAndNewlines))?.isEmpty == false  {
-            
-            loginButton.isEnabled = true
-            loginButton.alpha = 1.0
-        }
+        validateTextField()
     }
     
     func showAlert(title: String, message: String, isSuccessful: Bool) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         
-        let okAction = UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+        let okAction = UIAlertAction(title: "OK", style: .default) { [weak self]_ in
             if !isSuccessful {
                 
                 self?.loginButton.isEnabled = false
@@ -243,26 +255,35 @@ class LoginViewController: UIViewController {
                 self?.email.text = ""
                 self?.password.text = ""
             }
+            //self->alert->action->closure->self = strong reference cycle.
         }
         
         alert.addAction(okAction)
         present(alert, animated: true)
+    }
+    
+    func validateTextField(){
+        let emailText = email.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let passwordText = password.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            
+        if !emailText.isEmpty && !passwordText.isEmpty{
+            loginButton.isEnabled = true
+            loginButton.alpha = 1.0
+        }
     }
 }
 
 extension LoginViewController: UITextFieldDelegate {
     
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        if let nextfield = view.viewWithTag(textField.tag + 1) as? UITextField {
-            nextfield.becomeFirstResponder()
-        } else {
-            textField.resignFirstResponder()
+        
+        if textField == email{
+            password.becomeFirstResponder()
+        }
+        else if textField == password{
             
-            if ((email.text?.isEmpty) == false) && ((password.text?.isEmpty) == false) && (email.text?.trimmingCharacters(in: .whitespacesAndNewlines))?.isEmpty == false && (password.text?.trimmingCharacters(in: .whitespacesAndNewlines))?.isEmpty == false {
-                
-                loginButton.isEnabled = true
-                loginButton.alpha = 1.0
-            }
+            textField.resignFirstResponder()
+            validateTextField()
         }
         return false
     }
