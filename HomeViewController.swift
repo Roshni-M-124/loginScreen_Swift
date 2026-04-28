@@ -19,6 +19,8 @@ nonisolated struct Fruit: Hashable {
     let price: String
     let imageIndex: Int
     var isExpanded: Bool = false
+    
+    
 }
 
 nonisolated enum Item: Hashable {
@@ -99,7 +101,7 @@ class HomeViewController: UIViewController,
 
         view.addSubview(tableView)
         tableView.frame = view.bounds
-
+        title = "Fruits"
         configureDataSource()
         applyInitialSnapshot()
     }
@@ -128,11 +130,11 @@ extension HomeViewController {
                 } else {
                     cell.setImage(nil)
 
-                    Task {
-                        await self.fetchImage(for: index)
+                    Task { [weak self] in
+                        await self?.fetchImage(for: index)
                         DispatchQueue.main.async {
                             if let updatedCell = tableView.cellForRow(at: indexPath) as? FruitCell {
-                                updatedCell.setImage(self.imageCache[index])
+                                updatedCell.setImage(self?.imageCache[index])
                             }
                         }
                     }
@@ -172,19 +174,25 @@ extension HomeViewController {
         switch item {
 
         case .fruit(let fruit):
-
-            let priceItem = Item.price(fruit)
-            if snapshot.itemIdentifiers.contains(priceItem) {
-                snapshot.deleteItems([priceItem])
-            } else {
-                snapshot.insertItems([priceItem], afterItem: item)
+            
+            let index = fruit.imageIndex
+            fruits[index].isExpanded.toggle()
+            let updatedFruit = fruits[index]
+            let newItem = Item.fruit(updatedFruit)
+            snapshot.insertItems([newItem], beforeItem: item)
+            snapshot.deleteItems([item])
+            let priceItem = Item.price(updatedFruit)
+            if updatedFruit.isExpanded {
+                snapshot.insertItems([priceItem], afterItem: newItem)
             }
-
+            else {
+                snapshot.deleteItems([Item.price(fruit)])
+            }
         case .price:
             return
         }
 
-        dataSource.apply(snapshot, animatingDifferences: true)
+        dataSource.apply(snapshot, animatingDifferences: false)
     }
 }
 
