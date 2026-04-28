@@ -11,26 +11,13 @@ class FruitCell: UITableViewCell {
     
     let fruitImageView = UIImageView()
     let titleLabel = UILabel()
-    let priceLabel = UILabel()
     let arrowImageView = UIImageView()
-    
-    var isExpanded: Bool = false {
-        didSet {
-            priceLabel.isHidden = !isExpanded
-            let imageName = isExpanded ? "chevron.up" : "chevron.down"
-            arrowImageView.image = UIImage(systemName: imageName)
-        }
-    }
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
-        
-        let stack = UIStackView(arrangedSubviews: [titleLabel, priceLabel])
-        stack.axis = .vertical
-        stack.spacing = 5
-        
-        let container = UIStackView(arrangedSubviews: [fruitImageView, stack, arrowImageView])
+        titleLabel.numberOfLines = 0
+        let container = UIStackView(arrangedSubviews: [fruitImageView, titleLabel, arrowImageView])
         container.axis = .horizontal
         container.spacing = 12
         container.alignment = .center
@@ -50,8 +37,6 @@ class FruitCell: UITableViewCell {
             arrowImageView.widthAnchor.constraint(equalToConstant: 20)
         ])
         
-        priceLabel.textColor = .gray
-        priceLabel.isHidden = true
     }
     
     required init?(coder: NSCoder) {
@@ -60,8 +45,7 @@ class FruitCell: UITableViewCell {
     
     func configure(with fruit: Fruit) {
         titleLabel.text = fruit.title
-        priceLabel.text = fruit.price
-        isExpanded = fruit.isExpanded
+        arrowImageView.image = UIImage(systemName: fruit.isExpanded ? "chevron.up" : "chevron.down")
     }
     
     func setImage(_ image: UIImage?) {
